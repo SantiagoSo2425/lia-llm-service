@@ -32,36 +32,51 @@ def setup_db():
     conn.close()
     print("✅ Base de datos lista")
 
-
-def chunk_text(text, size=500, overlap=50):
+def chunk_text(text, size=100, overlap=10):
     words = text.split()
     chunks = []
     for i in range(0, len(words), size - overlap):
-        chunks.append(" ".join(words[i:i + size]))
+        chunk = " ".join(words[i:i + size])
+        if len(chunk.strip()) > 20:  # ignorar chunks vacíos
+            chunks.append(chunk)
     return chunks
 
 def index_pdf(filepath):
     print(f"📄 Indexando: {filepath}")
     reader = PdfReader(filepath)
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    text = " ".join(text.split())
     chunks = chunk_text(text)
 
     conn = get_conn()
     cur = conn.cursor()
 
-    for i, chunk in enumerate(chunks):
-        resp = client.embeddings(model="nomic-embed-text", prompt=chunk)
-        embedding = resp["embedding"]
-        cur.execute(
-            "INSERT INTO documentos (archivo, chunk_index, contenido, embedding) VALUES (%s, %s, %s, %s)",
-            (filepath, i, chunk, embedding)
-        )
-        print(f"  chunk {i+1}/{len(chunks)} indexado")
+    cur.execute("SELECT COALESCE(MAX(chunk_index), -1) FROM documentos WHERE archivo = %s", (filepath,))
+    start_chunk = cur.fetchone()[0] + 1
+    if start_chunk > 0:
+        print(f"  Retomando desde chunk {start_chunk + 1}")
 
-    conn.commit()
+    for i, chunk in enumerate(chunks):
+        if i < start_chunk:
+            continue
+        try:
+            resp = client.embeddings(model="nomic-embed-text", prompt=chunk)
+            embedding = resp["embedding"]
+            cur.execute(
+                "INSERT INTO documentos (archivo, chunk_index, contenido, embedding) VALUES (%s, %s, %s, %s)",
+                (filepath, i, chunk, embedding)
+            )
+            conn.commit()  # commit por cada chunk
+            print(f"  chunk {i+1}/{len(chunks)} indexado")
+        except Exception as e:
+            print(f"  ⚠️ chunk {i+1} omitido: {e}")
+            continue
+
     cur.close()
     conn.close()
     print(f"✅ {filepath} indexado completo")
+
+
 
 if __name__ == "__main__":
     setup_db()
