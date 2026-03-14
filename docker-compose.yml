@@ -8,6 +8,19 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lia-postgres
+    environment:
+      POSTGRES_USER: lia
+      POSTGRES_PASSWORD: lia1234
+      POSTGRES_DB: lia_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   lia-api:
     build: .
     container_name: lia-api
@@ -15,9 +28,12 @@ services:
       - "8000:8000"
     environment:
       - OLLAMA_HOST=http://ollama:11434
+      - DATABASE_URL=postgresql://lia:lia1234@postgres:5432/lia_db
     depends_on:
       - ollama
+      - postgres
     restart: unless-stopped
 
 volumes:
   ollama_data:
+  postgres_data:
