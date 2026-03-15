@@ -129,5 +129,5 @@ El microservicio está preparado para migrar al Jetson Orin Nano sin modificacio
 
 ## Autor
 
-Santiago Suarez — Semillero de Investigación, ITM  
+Santiago Suárez Osorio — Semillero de Investigación, ITM  
 Proyecto LIA — Componente IA/LLM
