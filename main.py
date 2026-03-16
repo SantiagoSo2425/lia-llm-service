@@ -46,7 +46,7 @@ def get_context(query: str, top_k: int = 3) -> list[str]:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": "llama3.2:3b"}
+   return {"status": "ok", "model": "gemma3:1b"}
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
@@ -61,9 +61,9 @@ def chat(request: ChatRequest):
         ]
 
         response = client.chat(
-            model="llama3.2:3b",
+           model="gemma3:1b",
             messages=messages,
-            options={"num_predict": 300}
+            options={"num_predict": 150, "num_thread":2}
         )
         return ChatResponse(
             response=response["message"]["content"],
